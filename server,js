@@ -1,0 +1,88 @@
+const express = require("express");
+const cors = require("cors");
+const bodyParser = require("body-parser");
+
+const app = express();
+
+app.use(cors());
+app.use(bodyParser.json());
+
+// IMPORTANT for Render deployment
+const PORT = process.env.PORT || 3000;
+
+// Fake storage
+let projects = {};
+
+// Simple AI generator (we upgrade later with real AI)
+function generateProject(prompt) {
+
+    if (prompt.toLowerCase().includes("menu")) {
+        return {
+            projectName: "MainMenuProject",
+            scripts: [
+                {
+                    type: "LocalScript",
+                    name: "MainMenuScript",
+                    location: "StarterPlayerScripts",
+                    code: `
+local player = game.Players.LocalPlayer
+
+local gui = Instance.new("ScreenGui")
+gui.Name = "MainMenu"
+gui.Parent = player:WaitForChild("PlayerGui")
+
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(1,0,1,0)
+frame.BackgroundColor3 = Color3.fromRGB(25,25,25)
+frame.Parent = gui
+
+local button = Instance.new("TextButton")
+button.Size = UDim2.new(0,250,0,70)
+button.Position = UDim2.new(0.5,-125,0.5,-35)
+button.Text = "PLAY"
+button.TextScaled = true
+button.Parent = frame
+
+button.MouseButton1Click:Connect(function()
+	gui.Enabled = false
+end)
+`
+                }
+            ]
+        };
+    }
+
+    return {
+        projectName: "EmptyProject",
+        scripts: []
+    };
+}
+
+// Generate project
+app.post("/generate", (req, res) => {
+    const { prompt, userId } = req.body;
+
+    if (!prompt || !userId) {
+        return res.status(400).json({ error: "Missing prompt or userId" });
+    }
+
+    const project = generateProject(prompt);
+    projects[userId] = project;
+
+    res.json(project);
+});
+
+// Get project (Roblox plugin uses this)
+app.get("/project/:userId", (req, res) => {
+    const project = projects[req.params.userId];
+
+    if (!project) {
+        return res.status(404).json({ error: "No project found" });
+    }
+
+    res.json(project);
+});
+
+app.listen(PORT, () => {
+    console.log("Server running on port " + PORT);
+});
